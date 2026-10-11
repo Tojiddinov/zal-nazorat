@@ -389,7 +389,7 @@
     if (day.items.length) {
       h += `<ol class="plan">${day.items.map((it, j) => {
         const ex = D.ex(it.e) || { type: 'w' };
-        return `<li><span class="n">${j + 1}</span><span class="nm">${esc(exName(it.e))}</span><span class="sr">${ex.type === 't' ? `${esc(it.r)} ${unitOf(ex)}` : `${it.s}×${esc(it.r)}`}</span></li>`;
+        return `<li data-act="video" data-id="${esc(it.e)}"><span class="n">${j + 1}</span><span class="nm">${esc(exName(it.e))}</span><span class="sr">${ex.type === 't' ? `${esc(it.r)} ${unitOf(ex)}` : `${it.s}×${esc(it.r)}`}</span>${ytId(ex.video) ? '<span class="play-mini" aria-hidden="true">▶</span>' : ''}</li>`;
       }).join('')}</ol>`;
       h += `<button class="btn primary block" data-act="start" data-p="${di}">${day.rest ? 'Boshlash' : 'Mashg‘ulotni boshlash'}</button>`;
     }
@@ -717,8 +717,10 @@
       if (ex.group !== g) { if (g !== null) h += '</section>'; g = ex.group; h += `<div class="section-title">${GROUP_NAME[g] || g}</div><section class="card flush">`; }
       const hist = idx[id];
       const meta = hist ? `${hist.length} marta · oxirgi ${dateShort(hist[hist.length - 1].d)}` : (ex.cue || '');
-      h += `<button class="row" data-act="openEx" data-id="${esc(id)}"><span class="grow"><div class="title">${esc(ex.name)}${ex.custom ? ' <span class="pill" style="font-size:11px">shaxsiy</span>' : ''}</div><div class="sub">${esc(meta)}</div></span>
-        ${ex.video ? '<span class="pill accent">▶</span>' : ''}<span class="chev">›</span></button>`;
+      const vid = ytId(ex.video);
+      h += `<button class="row" data-act="openEx" data-id="${esc(id)}">${vid ? `<img class="thumb-sm" loading="lazy" src="${ytThumb(vid)}" alt="">` : '<span class="thumb-sm"></span>'}
+        <span class="grow"><div class="title">${esc(ex.name)}${ex.custom ? ' <span class="pill" style="font-size:11px">shaxsiy</span>' : ''}</div><div class="sub">${esc(meta)}</div></span>
+        <span class="chev">›</span></button>`;
     }
     return h + '</section>';
   }
@@ -728,6 +730,36 @@
     return m ? m[1] : null;
   };
   const ytSearch = (q) => 'https://www.youtube.com/results?search_query=' + encodeURIComponent(q);
+  const ytThumb = (vid) => `https://i.ytimg.com/vi/${vid}/mqdefault.jpg`;
+  // Muqova (bosilganda shu joyda pleyer ochiladi). key — qaysi pleyer ochiqligini ajratadi.
+  function videoThumb(ex, key, big) {
+    const vid = ytId(ex.video);
+    if (!vid) return '';
+    if (ui.embed === key) {
+      return `<div class="video-box"><iframe src="https://www.youtube-nocookie.com/embed/${vid}?rel=0&playsinline=1&autoplay=1" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>`;
+    }
+    return `<button class="thumb${big ? ' big' : ''}" data-act="embed" data-k="${esc(key)}" style="background-image:url('${ytThumb(vid)}')" aria-label="Videoni ko‘rish: ${esc(ex.name)}"><span class="play"></span></button>`;
+  }
+
+  function dayView(i) {
+    const d = D.day(i);
+    let h = sheetHead(esc(d.name), DAYS[i]);
+    h += `<p class="sub" style="margin:-6px 2px 12px">${esc(d.title || '')}${d.items.length ? ` · ~${estMinutes(d)} daq` : ''}</p>
+      <div class="btn-row" style="margin:0 0 12px">
+        ${!D.active() && d.items.length ? `<button class="btn primary" data-act="startFromDay" data-p="${i}">▶ Boshlash</button>` : ''}
+        <button class="btn" data-act="editDayItems" data-p="${i}">✎ Tahrirlash</button></div>`;
+    if (d.rest) h += `<section class="card"><p style="margin:0">Dam olish kuni: 30–40 daqiqa sayr, cho‘zilish, 8+ soat uyqu.</p></section>`;
+    d.items.forEach((it, j) => {
+      const ex = D.ex(it.e) || { type: 'w', name: 'Noma’lum mashq' };
+      const key = `d${i}-${j}`;
+      const hasVid = !!ytId(ex.video);
+      h += `<section class="card vid-card${!hasVid ? ' no-vid' : ui.embed === key ? ' playing' : ''}">${videoThumb(ex, key)}
+        <div><div class="vid-title"><span class="n">${j + 1}</span><b>${esc(ex.name)}</b></div>
+          <div class="sub">${ex.type === 't' ? `${esc(it.r)} ${unitOf(ex)}` : `${it.s}×${esc(it.r)} · dam ${restText(it.t)}`}</div>
+          ${ex.cue ? `<p class="ex-cue" style="margin:6px 0 0">${esc(ex.cue)}</p>` : ''}</div></section>`;
+    });
+    return h;
+  }
 
   function exSheet(id) {
     const ex = D.ex(id);
@@ -736,17 +768,14 @@
     let h = sheetHead(esc(ex.name), GROUP_NAME[ex.group] || '');
     if (ex.cue) h += `<section class="card"><div class="eyebrow">Texnika</div><p style="margin-bottom:0">${esc(ex.cue)}</p></section>`;
 
-    h += `<section class="card"><div class="eyebrow">Video</div>`;
-    const vid = ytId(ex.video);
-    if (ex.video) {
-      if (vid && ui.embed === id) h += `<div class="video-box"><iframe src="https://www.youtube-nocookie.com/embed/${vid}?rel=0&playsinline=1" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>`;
-      else h += `<button class="btn primary block" data-act="playVideo" data-id="${esc(id)}">▶ Mening videom</button>`;
-    }
-    h += `<div class="sub" style="margin-top:8px">YouTube’dan texnika videosini qidirish:</div><div class="yt-row">
+    h += `<section class="card"><div class="eyebrow" style="margin-bottom:8px">Video</div>`;
+    if (ytId(ex.video)) h += videoThumb(ex, id, true);
+    else if (ex.video) h += `<button class="btn primary block" data-act="playVideo" data-id="${esc(id)}">▶ Videoni ochish</button>`;
+    h += `<div class="sub" style="margin-top:10px">Boshqa videolar — YouTube’da qidirish:</div><div class="yt-row">
         <button class="btn small" data-act="ytSearch" data-q="${esc((ex.en || ex.name) + ' proper form')}">▶ Inglizcha</button>
         <button class="btn small" data-act="ytSearch" data-q="${esc(ex.ru || ex.name)}">▶ Ruscha</button>
         <button class="btn small" data-act="ytSearch" data-q="${esc(ex.name + ' texnikasi')}">▶ O‘zbekcha</button></div>
-      <label class="field"><span>Sevimli video havolasi (YouTube)</span><input class="in" data-ch="exField" data-id="${esc(id)}" data-f="video" placeholder="https://youtu.be/…" value="${esc(ex.video || '')}"></label></section>`;
+      <label class="field"><span>Video havolasi — o‘zingiz yoqtirganiga almashtiring</span><input class="in" data-ch="exField" data-id="${esc(id)}" data-f="video" placeholder="https://youtu.be/…" value="${esc(ex.video || '')}"></label></section>`;
 
     // Taraqqiyot
     if (hist.length) {
@@ -1028,14 +1057,11 @@
     video(el) {
       const ex = D.ex(el.dataset.id);
       if (!ex) return;
-      if (ex.video && ytId(ex.video)) { ui.embed = ex.id; openSheet(() => exSheet(ex.id)); }
-      else if (ex.video) openLink(ex.video);
-      else openSheet(() => exSheet(ex.id));
+      if (ex.video && !ytId(ex.video)) return openLink(ex.video);
+      ui.embed = ytId(ex.video) ? ex.id : null;
+      openSheet(() => exSheet(ex.id));
     },
-    playVideo(el) {
-      const ex = D.ex(el.dataset.id);
-      if (ytId(ex.video)) { ui.embed = ex.id; drawSheet(); } else openLink(ex.video);
-    },
+    playVideo(el) { const ex = D.ex(el.dataset.id); if (ex && ex.video) openLink(ex.video); },
     ytSearch(el) { openLink(ytSearch(el.dataset.q)); },
     openEx(el) { const id = el.dataset.id; openSheet(() => exSheet(id)); },
     newEx() {
@@ -1051,7 +1077,13 @@
     libGroup(el) { ui.libGroup = el.dataset.g; render(); },
     pickGroup(el) { ui.pickGroup = el.dataset.g; drawSheet(); },
 
-    editDay(el) { const p = +el.dataset.p; openSheet(() => dayEditor(p)); },
+    editDay(el) { const p = +el.dataset.p; openSheet(() => dayView(p)); },
+    editDayItems(el) { const p = +el.dataset.p; ui.embed = null; openSheet(() => dayEditor(p)); },
+    startFromDay(el) {
+      sheets.length = 0; drawSheet();
+      ui.tab = 'today'; unlockAudio(); startSession(+el.dataset.p);
+    },
+    embed(el) { ui.embed = el.dataset.k; haptic.tap(); drawSheet(); },
     mvItem(el) {
       const p = +el.dataset.p, j = +el.dataset.j, k = j + +el.dataset.d, d = D.day(p);
       if (k < 0 || k >= d.items.length) return;

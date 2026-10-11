@@ -43,8 +43,17 @@ cd ~/zal-nazorat && python3 -m http.server 8765
 | `app.js` | Ilova mantiqi: saqlash/sinxron, mashg‘ulot rejimi, taymer, statistika, grafiklar |
 | `styles.css` | Dizayn — Telegram mavzusi ranglarini (yorug‘/qorong‘i) avtomatik oladi |
 
+## Kunlik eslatma
+Bot har kuni 08:07 (Toshkent) da bugungi rejani yuboradi — alohida private repo `Tojiddinov/zal-nazorat-bot`
+(GitHub Actions cron). Reja shu saytdagi `data.js` dan olinadi.
+
+## Videolar
+Har bir standart mashqda `data.js` → `video` (YouTube havolasi) bor; ilova ichida muqova bosilganda shu yerning o‘zida ochiladi.
+Ilovada istalgan mashqning videosini o‘zingiz yoqtirganiga almashtirish mumkin («Mashqlar» → mashq → «Video havolasi»).
+
 ## Cheklovlar
 - Telegram CloudStorage: 1024 ta yozuv (har kun = 1 yozuv → ~2,7 yil). 900 dan oshsa, Sozlamalar ogohlantiradi —
   **Zaxira nusxa** tugmasi bilan JSON’ni «Saqlangan xabarlar»ga yuborib qo‘ying.
 - Ilova yopiq bo‘lsa, dam olish taymeri signal bermaydi (mashg‘ulot paytida ekran o‘chmasligi so‘raladi).
-  Kundalik eslatma kerak bo‘lsa — botga kichik server qo‘shish kerak bo‘ladi.
+- Eslatma standart dastur bo‘yicha yoziladi: ilovada dasturni o‘zgartirsangiz (u Telegram bulutida, bot uni ko‘ra olmaydi),
+  `data.js` dagi `DEFAULT_PROGRAM` ni ham yangilang.
