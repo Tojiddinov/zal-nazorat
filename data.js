@@ -99,6 +99,8 @@ window.DEFAULT_EXERCISES = {
   // Oyoq
   squat: { name: 'Shtanga bilan o‘tirib-turish (squat)', group: 'oyoq', type: 'w', en: 'barbell back squat', ru: 'приседания со штангой техника', video: 'https://youtu.be/SW_C1A-rejs',
     cue: 'Oyoq yelka kengligida, tizzalar oyoq uchi yo‘nalishida. Kamida parallelgacha, bel neytral.' },
+  goblet: { name: 'Gantel bilan o‘tirish (goblet squat)', group: 'oyoq', type: 'w', en: 'goblet squat', ru: 'гоблет присед с гантелей', video: 'https://youtu.be/gCESNsDsbqk',
+    cue: 'Gantelni ko‘krak oldida ushlang, tirsaklar tizzalar orasidan tushadi. Boshlovchilar uchun eng xavfsiz o‘tirish.' },
   hack: { name: 'Gakk-o‘tirish (hack squat)', group: 'oyoq', type: 'w', en: 'hack squat', ru: 'гакк приседания', video: 'https://youtu.be/rYgNArpwE7E',
     cue: 'Bel suyanchiqqa yopishgan, chuqur tushing, tovonlardan itaring.' },
   rdl: { name: 'Rumin o‘lik tortishi (RDL)', group: 'oyoq', type: 'w', en: 'romanian deadlift', ru: 'румынская тяга', video: 'https://youtu.be/2SHsk9AzdjA',
@@ -171,3 +173,49 @@ window.DEFAULT_PROGRAM = [
     ['stretch', 1, '20', 0],
   ] },
 ];
+
+/* Mashg‘ulot shablonlari — kunlarga biriktiriladi (o‘rta darajada o‘zingiz tanlaysiz, AI ham shulardan tavsiya qiladi). */
+window.TEMPLATES = {
+  fb_a: { name: 'Full body A', title: 'Butun tana · trenajyor va gantel', items: [
+    ['warmup', 1, '10', 0], ['leg_press', 3, '10-12', 120], ['db_press', 3, '10-12', 90], ['lat_pd', 3, '10-12', 90],
+    ['db_shoulder', 2, '10-12', 90], ['leg_curl', 2, '12-15', 60], ['plank', 2, '30', 60], ['cardio', 1, '10', 0],
+  ] },
+  fb_b: { name: 'Full body B', title: 'Butun tana · trenajyor va gantel', items: [
+    ['warmup', 1, '10', 0], ['goblet', 3, '10-12', 90], ['machine_press', 3, '10-12', 90], ['cable_row', 3, '10-12', 90],
+    ['rdl', 3, '10-12', 120], ['lateral', 2, '12-15', 60], ['pushdown', 2, '12-15', 60], ['cardio', 1, '10', 0],
+  ] },
+  chest_tri: { name: 'Ko‘krak + Triceps', title: 'Itarish mushaklari', items: [
+    ['warmup', 1, '10', 0], ['bench', 4, '6-10', 150], ['incline_db', 3, '8-12', 120], ['cable_fly', 3, '12-15', 60],
+    ['dips', 3, '8-12', 90], ['pushdown', 3, '10-12', 60], ['oh_ext', 3, '10-12', 60], ['cardio', 1, '10', 0],
+  ] },
+  back_bi: { name: 'Orqa + Biceps', title: 'Tortish mushaklari', items: [
+    ['warmup', 1, '10', 0], ['pullup', 4, '6-10', 120], ['bb_row', 4, '8-10', 120], ['cable_row', 3, '10-12', 90],
+    ['face_pull', 3, '15', 60], ['bb_curl', 3, '8-12', 75], ['hammer', 3, '10-12', 60], ['cardio', 1, '10', 0],
+  ] },
+  legs: { name: 'Oyoq', title: 'Son · dumba · boldir', items: [
+    ['warmup', 1, '10', 0], ['squat', 4, '6-10', 180], ['rdl', 3, '8-10', 120], ['leg_press', 3, '10-12', 120],
+    ['leg_curl', 3, '10-12', 60], ['calf_stand', 4, '12-15', 60], ['cable_crunch', 3, '15', 60], ['cardio', 1, '10', 0],
+  ] },
+  shoulders_abs: { name: 'Yelka + Press', title: 'Deltalar · trapetsiya · qorin', items: [
+    ['warmup', 1, '10', 0], ['ohp', 4, '6-10', 120], ['lateral', 4, '12-15', 60], ['rear_delt', 3, '15', 60],
+    ['shrug', 3, '12-15', 60], ['hlr', 3, '12-15', 60], ['plank', 3, '45', 60], ['cardio', 1, '10', 0],
+  ] },
+  upper: { name: 'Upper', title: 'Yuqori tana: ko‘krak · orqa · yelka · qo‘l', items: [
+    ['warmup', 1, '10', 0], ['incline_bb', 3, '8-10', 120], ['lat_pd', 3, '10-12', 90], ['db_shoulder', 3, '10-12', 90],
+    ['cable_row', 3, '10-12', 90], ['pec_deck', 2, '12-15', 60], ['bb_curl', 2, '10-12', 60], ['pushdown', 2, '10-12', 60], ['cardio', 1, '10', 0],
+  ] },
+  lower: { name: 'Lower', title: 'Pastki tana: son · dumba · boldir · press', items: [
+    ['warmup', 1, '10', 0], ['hack', 3, '8-10', 150], ['hip_thrust', 3, '8-12', 120], ['bulgarian', 3, '10', 90],
+    ['seated_curl', 3, '12-15', 60], ['leg_ext', 3, '12-15', 60], ['calf_seat', 3, '15-20', 60], ['ab_wheel', 3, '10-12', 60], ['cardio', 1, '10', 0],
+  ] },
+};
+// O‘rta darajada kunlarga biriktirsa bo‘ladigan shablonlar (AI ham faqat shulardan tanlaydi)
+window.FLEX_TEMPLATES = ['chest_tri', 'back_bi', 'legs', 'shoulders_abs', 'upper', 'lower', 'fb_a'];
+
+/* 3 ta daraja. week: 7 kun (Du…Ya) — shablon id, to‘liq kun obyekti yoki null (dam olish). */
+window.PROGRAMS = {
+  beginner: { name: 'Boshlovchi', icon: '🌱', desc: 'Full body · haftasiga 3 kun · ~60 daqiqa', week: ['fb_a', null, 'fb_b', null, 'fb_a', null, null] },
+  intermediate: { name: 'O‘rta', icon: '💪', desc: 'Haftasiga 3–4 marta · kunlarni o‘zingiz tanlaysiz · AI tavsiya qiladi', flexible: true,
+    week: ['chest_tri', null, 'back_bi', null, 'legs', 'shoulders_abs', null] },
+  pro: { name: 'Professional', icon: '🏆', desc: 'Push / Pull / Legs × 2 · haftasiga 6 kun · ~2 soat', week: window.DEFAULT_PROGRAM },
+};

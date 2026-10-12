@@ -62,6 +62,15 @@ h3 { font-size: 15px; font-weight: 650; }
 p { margin: 8px 0; }
 
 .top { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; margin: 4px 4px 14px; }
+.levels { display: grid; gap: 8px; margin-top: 12px; }
+.level { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; border: 0; border-radius: 14px; padding: 12px 14px; background: var(--soft); }
+.level.on { box-shadow: inset 0 0 0 2px var(--btn); }
+.level .lv-icon { font-size: 26px; line-height: 1; flex: none; }
+.level .lv-text b { display: block; font-size: 16px; }
+.level .lv-text small { display: block; color: var(--hint); font-size: 13px; margin-top: 2px; }
+.sheet .level { background: var(--card); }
+.ai-card { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--btn) 35%, transparent); }
+.btn:disabled { opacity: .45; }
 .brand-row { display: flex; align-items: center; gap: 12px; }
 .brand { width: 48px; height: 48px; border-radius: 13px; display: block; flex: none; }
 .section-title { margin: 22px 6px 8px; font-size: 13px; color: var(--hint); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }

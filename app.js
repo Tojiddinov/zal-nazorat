@@ -185,18 +185,28 @@
 
   // ---------------------------------------------------------------- domain
   const logKey = (iso) => 'l_' + iso.replace(/-/g, '');
+  // Har darajaning o‘z haftasi: pro eski 'p_i' kalitlarida qoladi (mavjud o‘zgartirishlar saqlanadi)
+  const dayKey = (level, i) => ({ pro: 'p_', beginner: 'pb_', intermediate: 'pi_' }[level] || 'p_') + i;
+  const REST_DAY = { name: 'Dam olish', title: 'Tiklanish — sayr va cho‘zilish', rest: true, items: [['stretch', 1, '20', 0]] };
+  // Shablon id | to‘liq kun | null (dam) → tahrirlanadigan kun obyekti
+  function fromSpec(spec) {
+    const src = spec == null ? REST_DAY : typeof spec === 'string' ? Object.assign({ tpl: spec }, window.TEMPLATES[spec]) : spec;
+    return { name: src.name, title: src.title || '', rest: !!src.rest, tpl: src.tpl || null, items: src.items.map(([e, s, r, t]) => ({ e, s, r, t })) };
+  }
 
   const D = {
-    settings() { return Object.assign({ start: '', target: 120, restDef: 90 }, Store.get('s')); },
+    settings() { return Object.assign({ start: '', target: 120, restDef: 90, level: '' }, Store.get('s')); },
     saveSettings(patch) { const s = Object.assign(D.settings(), patch); delete s.u; Store.set('s', s); },
+    level() { return window.PROGRAMS[D.settings().level] ? D.settings().level : ''; },
+    program() { return window.PROGRAMS[D.level() || 'pro']; },
     day(i) {
-      const v = Store.get('p_' + i);
-      if (v) return v;
-      const d = window.DEFAULT_PROGRAM[i];
-      return { name: d.name, title: d.title, rest: !!d.rest, items: d.items.map(([e, s, r, t]) => ({ e, s, r, t })) };
+      const v = Store.get(dayKey(D.level(), i));
+      return v || fromSpec(D.program().week[i]);
     },
-    saveDay(i, day) { Store.set('p_' + i, day); },
-    isCustomDay(i) { return !!Store.get('p_' + i); },
+    template(id) { return fromSpec(id); },
+    saveDay(i, day) { Store.set(dayKey(D.level(), i), day); syncProfileSoon(); },
+    resetDay(i) { Store.remove(dayKey(D.level(), i)); syncProfileSoon(); },
+    isCustomDay(i) { return !!Store.get(dayKey(D.level(), i)); },
     ex(id) {
       const base = window.DEFAULT_EXERCISES[id], ov = Store.get('x_' + id);
       if (!base && !ov) return null;
@@ -278,7 +288,7 @@
   }
 
   // ---------------------------------------------------------------- UI state
-  const ui = { tab: 'today', open: null, pickDay: null, libGroup: 'all', libQ: '', pickQ: '', pickGroup: 'all', pick: null, embed: null, histN: 15, heatSel: null };
+  const ui = { tab: 'today', open: null, pickDay: null, pickTpl: null, ai: null, libGroup: 'all', libQ: '', pickQ: '', pickGroup: 'all', pick: null, embed: null, histN: 15, heatSel: null };
   const sheets = [];
 
   function render() {
@@ -320,15 +330,26 @@
     const today = isoDate();
     const todayIdx = dayIdx();
     const di = ui.pickDay == null ? todayIdx : ui.pickDay;
-    const day = D.day(di);
+    const day = ui.pickTpl ? D.template(ui.pickTpl) : D.day(di);
     const log = D.log(today);
     let h = `<header class="top"><div class="brand-row"><img class="brand" src="icon.svg" alt="Gym Control"><div><div class="eyebrow">${DAYS[todayIdx]}, ${dateShort(today)}</div><h1>Bugun</h1></div></div>
       <button class="icon-btn" data-act="settings" aria-label="Sozlamalar"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button></header>`;
+    if (!D.level()) h += levelCard();
     h += gymAgeCard(s);
     if (log && log.it && log.it.length) h += doneCard(log);
-    h += planCard(di, day, todayIdx);
+    if (D.level()) h += planCard(di, day, todayIdx);
     h += dailyCard(today, log);
     return h;
+  }
+
+  function levelButtons(current) {
+    return Object.entries(window.PROGRAMS).map(([k, p]) => `<button class="level ${current === k ? 'on' : ''}" data-act="setLevel" data-l="${k}">
+      <span class="lv-icon">${p.icon}</span><span class="lv-text"><b>${esc(p.name)}</b><small>${esc(p.desc)}</small></span></button>`).join('');
+  }
+  function levelCard() {
+    return `<section class="card"><h3>Darajangizni tanlang</h3>
+      <p class="sub">Dastur shunga qarab tuziladi. Keyin «Dastur» bo‘limida o‘zgartirish mumkin.</p>
+      <div class="levels">${levelButtons('')}</div></section>`;
   }
 
   function gymAge(start) {
@@ -382,7 +403,9 @@
   }
 
   function planCard(di, day, todayIdx) {
-    let h = `<section class="card"><div class="card-head"><div><div class="eyebrow">${DAYS[di]}${di !== todayIdx ? ' · tanlangan' : ' · reja'}</div>
+    const flex = !!D.program().flexible;
+    const label = ui.pickTpl ? 'Bugun · tanlangan mashg‘ulot' : `${DAYS[di]}${di !== todayIdx ? ' · tanlangan' : ' · reja'}`;
+    let h = `<section class="card"><div class="card-head"><div><div class="eyebrow">${label}</div>
       <h2>${esc(day.name)}</h2><div class="sub">${esc(day.title || '')}</div></div>
       ${day.items.length ? `<span class="pill">~${estMinutes(day)} daq</span>` : ''}</div>`;
     if (day.rest) h += `<p class="sub">Mushaklar dam olganda o‘sadi: 8+ soat uyqu, 30–40 daqiqa sayr, yengil cho‘zilish.</p>`;
@@ -391,7 +414,13 @@
         const ex = D.ex(it.e) || { type: 'w' };
         return `<li data-act="video" data-id="${esc(it.e)}"><span class="n">${j + 1}</span><span class="nm">${esc(exName(it.e))}</span><span class="sr">${ex.type === 't' ? `${esc(it.r)} ${unitOf(ex)}` : `${it.s}×${esc(it.r)}`}</span>${ytId(ex.video) ? '<span class="play-mini" aria-hidden="true">▶</span>' : ''}</li>`;
       }).join('')}</ol>`;
-      h += `<button class="btn primary block" data-act="start" data-p="${di}">${day.rest ? 'Boshlash' : 'Mashg‘ulotni boshlash'}</button>`;
+      h += `<button class="btn primary block" data-act="start" data-p="${di}" ${ui.pickTpl ? `data-t="${ui.pickTpl}"` : ''}>${day.rest ? 'Boshlash' : 'Mashg‘ulotni boshlash'}</button>`;
+    }
+    if (flex) {
+      // O‘rta daraja: bugun qaysi mushakni ishlashni o‘zingiz tanlaysiz
+      h += `<div class="section-title" style="margin:16px 0 6px">Bugun nimani ishlaysiz?</div><div class="chips">`;
+      for (const t of window.FLEX_TEMPLATES) h += `<button class="chip ${ui.pickTpl === t ? 'on' : ''}" data-act="pickTpl" data-t="${t}">${esc(window.TEMPLATES[t].name)}</button>`;
+      return h + `</div></section>`;
     }
     h += `<div class="section-title" style="margin:16px 0 6px">Boshqa kunni tanlash</div><div class="chips">`;
     for (let i = 0; i < 7; i++) {
@@ -484,15 +513,15 @@
     return h;
   }
 
-  function startSession(p) {
-    const day = D.day(p);
+  function startSession(p, dayObj) {
+    const day = dayObj || D.day(p);
     const idx = index();
     const a = {
-      d: isoDate(), p, n: day.name, ti: day.title, st: Date.now(),
+      d: isoDate(), p, tpl: day.tpl || null, n: day.name, ti: day.title, st: Date.now(),
       it: day.items.map((x) => newSessionItem(x.e, x.s, x.r, x.t, idx)),
     };
     Store.set('a', a);
-    ui.open = null; ui.pickDay = null;
+    ui.open = null; ui.pickDay = null; ui.pickTpl = null;
     sessionOn();
     haptic.ok();
     render();
@@ -562,7 +591,7 @@
     const key = logKey(a.d);
     const old = Store.get(key) || {};
     const log = Object.assign({}, old, {
-      d: a.d, p: a.p, n: a.n, ti: a.ti,
+      d: a.d, p: a.p, tpl: a.tpl || old.tpl || null, n: a.n, ti: a.ti,
       st: old.st || a.st, en: end, dur: (old.dur || 0) + (end - a.st),
       it: (old.it || []).concat(items),
     });
@@ -630,11 +659,32 @@
   setInterval(tick, 500);
 
   // ---------------------------------------------------------------- PROGRAM
+  const LEVEL_TEXT = {
+    beginner: 'Butun tana haftasiga 3 marta (Du, Ch, Ju), har biri ~60 daqiqa. Trenajyor va gantel, texnikani o‘rganish uchun yengil vazn. 2–3 oydan keyin «O‘rta» darajaga o‘ting.',
+    intermediate: 'Haftasiga 3–4 marta. Kunni bosib, o‘sha kuni qaysi mushakni ishlashni o‘zingiz tanlaysiz yoki «Bugun» bo‘limida joyida tanlaysiz. 1 haftadan keyin AI keyingi hafta rejasini tavsiya qiladi.',
+    pro: 'Push / Pull / Legs × 2 — har mushak haftasiga 2 marta. Har kuni ~2 soat: razminka, asosiy mashqlar, press, kardio.',
+  };
+
+  function aiCard() {
+    const since = isoDate(addDays(new Date(), -14));
+    const n = D.workouts().filter((l) => l.d >= since).length;
+    const last = Store.get('ai');
+    const ready = inTG && n >= 2;
+    return `<section class="card ai-card"><div class="eyebrow">🤖 AI murabbiy</div><h3 style="margin-top:4px">Keyingi hafta rejasi</h3>
+      <p class="sub">AI oxirgi 2 haftadagi mashg‘ulotlaringizni ko‘rib, tana bir xil yuklamaga o‘rganib qolmasligi uchun yangi hafta rejasini tuzadi.</p>
+      <button class="btn primary block" data-act="aiPlan" ${ready ? '' : 'disabled'}>🤖 AI tavsiyasini olish</button>
+      ${!inTG ? '<p class="sub">Faqat Telegram ichida ishlaydi.</p>' : n < 2 ? `<p class="sub">Kamida 2 ta mashg‘ulot yozilgandan keyin ochiladi (hozir: ${n}).</p>` : ''}
+      ${last && last.result ? `<button class="btn ghost small" data-act="aiLast">Oxirgi tavsiya · ${dateShort(isoDate(new Date(last.at)))}</button>` : ''}</section>`;
+  }
+
   function viewProgram() {
     const today = dayIdx();
-    let h = `<header class="top"><div><div class="eyebrow">Haftalik reja</div><h1>Dastur</h1></div></header>
-      <p class="sub" style="margin:0 6px 12px">Push / Pull / Legs × 2 — har mushak haftasiga 2 marta. Har kuni ~2 soat: razminka, asosiy mashqlar, press, kardio. Kunni bosib mashqlar, podxod va dam olish vaqtini o‘zgartiring.</p>
-      <section class="card flush">`;
+    const lv = D.level() || 'pro', P = window.PROGRAMS[lv];
+    let h = `<header class="top"><div><div class="eyebrow">Haftalik reja · ${P.icon} ${esc(P.name)}</div><h1>Dastur</h1></div>
+        <button class="btn small" data-act="chooseLevel">Darajani o‘zgartirish</button></header>
+      <p class="sub" style="margin:0 6px 12px">${LEVEL_TEXT[lv]}${P.flexible ? '' : ' Kunni bosib mashqlar, podxod va dam olish vaqtini o‘zgartiring.'}</p>`;
+    if (P.flexible) h += aiCard();
+    h += `<section class="card flush">`;
     for (let i = 0; i < 7; i++) {
       const d = D.day(i);
       const sets = d.items.reduce((n, it) => n + ((D.ex(it.e) || {}).type === 't' ? 0 : it.s), 0);
@@ -747,7 +797,10 @@
     h += `<p class="sub" style="margin:-6px 2px 12px">${esc(d.title || '')}${d.items.length ? ` · ~${estMinutes(d)} daq` : ''}</p>
       <div class="btn-row" style="margin:0 0 12px">
         ${!D.active() && d.items.length ? `<button class="btn primary" data-act="startFromDay" data-p="${i}">▶ Boshlash</button>` : ''}
-        <button class="btn" data-act="editDayItems" data-p="${i}">✎ Tahrirlash</button></div>`;
+        <button class="btn" data-act="editDayItems" data-p="${i}">✎ Tahrirlash</button></div>
+      <div class="section-title" style="margin:4px 2px 6px">Shu kuni nima ishlaysiz?</div>
+      <div class="chips" style="margin-bottom:12px"><button class="chip ${d.rest ? 'on' : ''}" data-act="assignTpl" data-p="${i}" data-t="rest">😴 Dam olish</button>
+        ${Object.keys(window.TEMPLATES).map((t) => `<button class="chip ${!d.rest && d.tpl === t ? 'on' : ''}" data-act="assignTpl" data-p="${i}" data-t="${t}">${esc(window.TEMPLATES[t].name)}</button>`).join('')}</div>`;
     if (d.rest) h += `<section class="card"><p style="margin:0">Dam olish kuni: 30–40 daqiqa sayr, cho‘zilish, 8+ soat uyqu.</p></section>`;
     d.items.forEach((it, j) => {
       const ex = D.ex(it.e) || { type: 'w', name: 'Noma’lum mashq' };
@@ -759,6 +812,96 @@
           ${ex.cue ? `<p class="ex-cue" style="margin:6px 0 0">${esc(ex.cue)}</p>` : ''}</div></section>`;
     });
     return h;
+  }
+
+  function levelSheet() {
+    return `${sheetHead('Darajani tanlang')}<p class="sub" style="margin:-4px 2px 12px">Har darajaning o‘z haftalik rejasi bor — o‘zgartirishlaringiz yo‘qolmaydi.</p>
+      <div class="levels">${levelButtons(D.level())}</div>`;
+  }
+
+  // ---------------------------------------------------------------- AI murabbiy (o‘rta daraja)
+  const API = 'https://gym-control-bot.vercel.app';
+
+  function buildSummary() {
+    const since = isoDate(addDays(new Date(), -14));
+    const sessions = D.workouts().filter((l) => l.d >= since).slice(0, 12).reverse().map((l) => ({
+      d: l.d, dow: dayIdx(parseDate(l.d)), name: l.n || '', tpl: l.tpl || null, min: Math.round(logStats(l).dur / 60000),
+      items: l.it.map((it) => {
+        const ex = D.ex(it.e) || { type: 'w', group: '' };
+        const b = bestSet(ex, it.s);
+        return { e: it.e, g: ex.group, sets: it.s.length, best: b ? fmtSet(ex, b) : '' };
+      }),
+    }));
+    const muscleSets = {};
+    for (const s of sessions) for (const it of s.items) if (it.g && it.g !== 'razminka' && it.g !== 'kardio') muscleSets[it.g] = (muscleSets[it.g] || 0) + it.sets;
+    const week = [0, 1, 2, 3, 4, 5, 6].map((i) => { const d = D.day(i); return { day: i, rest: !!d.rest, tpl: d.tpl || null, name: d.name }; });
+    return { level: D.level(), sessions, muscleSets, week };
+  }
+
+  function applySwaps(day, swaps) {
+    for (const sw of swaps || []) {
+      if (!D.ex(sw.to)) continue;
+      for (const it of day.items) if (it.e === sw.from) it.e = sw.to;
+    }
+    return day;
+  }
+
+  function aiSheet() {
+    const st = ui.ai || {};
+    let h = sheetHead('🤖 AI tavsiyasi', 'Keyingi hafta');
+    if (st.loading) return h + '<section class="card"><div class="empty">AI mashg‘ulotlaringizni tahlil qilmoqda… (10–20 soniya)</div></section>';
+    if (st.error) return h + `<section class="card"><p>⚠️ ${esc(st.error)}</p><button class="btn primary block" data-act="aiPlan">Qayta urinish</button></section>`;
+    const r = st.result;
+    if (!r) return h;
+    const swapsTxt = (r.swaps || []).map((s) => `<div class="log-ex"><b>${esc(exName(s.from))} → ${esc(exName(s.to))}</b><div class="sets-txt">${esc(s.reason)}</div></div>`).join('');
+    h += `<section class="card"><p style="margin:0">${esc(r.summary)}</p></section>
+      <div class="section-title">Taklif qilingan hafta</div><section class="card flush">${r.week.map((w) => {
+        const t = window.TEMPLATES[w.tpl];
+        return `<div class="row"><span class="badge-day ${w.tpl === 'rest' ? 'rest' : ''}">${DAYS_SHORT[w.day]}</span><span class="grow"><div class="title">${t ? esc(t.name) : 'Dam olish'}</div>${w.note ? `<div class="sub">${esc(w.note)}</div>` : ''}</span></div>`;
+      }).join('')}</section>
+      ${swapsTxt ? `<div class="section-title">Mashqlarni almashtirish</div><section class="card">${swapsTxt}</section>` : ''}
+      ${(r.tips || []).length ? `<div class="section-title">Maslahatlar</div><section class="card">${r.tips.map((t) => `<p>💡 ${esc(t)}</p>`).join('')}</section>` : ''}
+      ${st.applied ? '<p class="sub" style="text-align:center">✅ Reja qo‘llangan</p>' : '<button class="btn primary block" data-act="aiApply">✅ Rejani qo‘llash</button>'}`;
+    return h;
+  }
+
+  async function aiPlan() {
+    ui.ai = { loading: true };
+    if (sheets[sheets.length - 1] !== aiSheet) openSheet(aiSheet); else drawSheet();
+    try {
+      const r = await fetch(API + '/api/ai-plan', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ initData: TG.initData, summary: buildSummary() }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(j.error || 'Server javob bermadi, keyinroq urinib ko‘ring');
+      ui.ai = { result: j };
+      Store.set('ai', { at: Date.now(), result: j });
+      haptic.ok();
+    } catch (e) {
+      ui.ai = { error: e.message === 'Failed to fetch' ? 'Internet aloqasini tekshiring' : e.message };
+    }
+    if (sheets[sheets.length - 1] === aiSheet) drawSheet();
+  }
+
+  // Bot ertalabki rejani to‘g‘ri yuborishi uchun daraja va hafta serverga yuboriladi (faqat Telegram ichida)
+  let syncTimer = 0;
+  function syncProfileSoon() { clearTimeout(syncTimer); syncTimer = setTimeout(syncProfile, 1500); }
+  async function syncProfile() {
+    if (!inTG || !D.level()) return;
+    const body = {
+      level: D.level(),
+      week: [0, 1, 2, 3, 4, 5, 6].map((i) => {
+        const d = D.day(i);
+        return { name: d.name, title: d.title || '', rest: !!d.rest, items: d.items.map((it) => { const ex = D.ex(it.e) || { type: 'w', name: it.e }; return [ex.name, it.s, String(it.r), ex.type]; }) };
+      }),
+    };
+    const sig = JSON.stringify(body);
+    if (lsGet('zal_sync') === sig) return;
+    try {
+      const r = await fetch(API + '/api/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(Object.assign({ initData: TG.initData }, body)) });
+      if (r.ok) lsSet('zal_sync', sig);
+    } catch (e) { /* oflayn — keyingi ochilishda */ }
   }
 
   function exSheet(id) {
@@ -994,8 +1137,33 @@
       if (!v) return toast('Sanani tanlang');
       D.saveSettings({ start: v }); haptic.ok(); render();
     },
-    pickDay(el) { const p = +el.dataset.p; ui.pickDay = p === dayIdx() ? null : p; haptic.tap(); render(); },
-    start(el) { unlockAudio(); startSession(+el.dataset.p); },
+    pickDay(el) { const p = +el.dataset.p; ui.pickDay = p === dayIdx() ? null : p; ui.pickTpl = null; haptic.tap(); render(); },
+    pickTpl(el) { const t = el.dataset.t; ui.pickTpl = ui.pickTpl === t ? null : t; ui.pickDay = null; haptic.tap(); render(); },
+    start(el) { unlockAudio(); startSession(+el.dataset.p, el.dataset.t ? D.template(el.dataset.t) : null); },
+    setLevel(el) {
+      const l = el.dataset.l;
+      D.saveSettings({ level: l });
+      ui.pickDay = null; ui.pickTpl = null;
+      haptic.ok(); toast(`${window.PROGRAMS[l].icon} ${window.PROGRAMS[l].name} darajasi tanlandi`);
+      syncProfileSoon();
+      if (sheets.length) closeSheet(); else render();
+    },
+    chooseLevel() { openSheet(levelSheet); },
+    assignTpl(el) {
+      const p = +el.dataset.p, t = el.dataset.t;
+      D.saveDay(p, t === 'rest' ? fromSpec(null) : D.template(t));
+      ui.embed = null; haptic.tap(); drawSheet();
+    },
+    aiPlan() { aiPlan(); },
+    aiLast() { const last = Store.get('ai'); if (!last) return; ui.ai = { result: last.result }; openSheet(aiSheet); },
+    aiApply() {
+      const r = ui.ai && ui.ai.result;
+      if (!r) return;
+      for (const w of r.week) D.saveDay(w.day, w.tpl === 'rest' || !window.TEMPLATES[w.tpl] ? fromSpec(null) : applySwaps(D.template(w.tpl), r.swaps));
+      ui.ai.applied = true;
+      haptic.ok(); toast('✅ Keyingi hafta rejasi qo‘llandi');
+      drawSheet();
+    },
     toggleEx(el) {
       const i = +el.dataset.i, a = D.active();
       const cur = ui.open == null ? currentIdx(a) : ui.open;
@@ -1113,7 +1281,7 @@
     },
     async resetDay(el) {
       if (!(await confirmBox('Bu kun standart dasturga qaytarilsinmi?'))) return;
-      Store.remove('p_' + el.dataset.p); drawSheet();
+      D.resetDay(+el.dataset.p); drawSheet();
     },
 
     heat(el) { ui.heatSel = el.dataset.d; render(); },
@@ -1229,6 +1397,7 @@
     $('#view').innerHTML = '<div class="empty">Yuklanmoqda…</div>';
     await Store.init();
     if (D.active()) sessionOn();
+    syncProfileSoon(); // mavjud foydalanuvchilar uchun ham: daraja/hafta o‘zgargan bo‘lsa serverga
     render();
   }
   boot();
