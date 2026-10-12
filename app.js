@@ -669,11 +669,10 @@
     const since = isoDate(addDays(new Date(), -14));
     const n = D.workouts().filter((l) => l.d >= since).length;
     const last = Store.get('ai');
-    const ready = inTG && n >= 2;
     return `<section class="card ai-card"><div class="eyebrow">🤖 AI murabbiy</div><h3 style="margin-top:4px">Keyingi hafta rejasi</h3>
       <p class="sub">AI oxirgi 2 haftadagi mashg‘ulotlaringizni ko‘rib, tana bir xil yuklamaga o‘rganib qolmasligi uchun yangi hafta rejasini tuzadi.</p>
-      <button class="btn primary block" data-act="aiPlan" ${ready ? '' : 'disabled'}>🤖 AI tavsiyasini olish</button>
-      ${!inTG ? '<p class="sub">Faqat Telegram ichida ishlaydi.</p>' : n < 2 ? `<p class="sub">Kamida 2 ta mashg‘ulot yozilgandan keyin ochiladi (hozir: ${n}).</p>` : ''}
+      <button class="btn primary block" data-act="aiPlan" ${inTG ? '' : 'disabled'}>🤖 AI tavsiyasini olish</button>
+      ${!inTG ? '<p class="sub">Faqat Telegram ichida ishlaydi.</p>' : n < 2 ? `<p class="sub">Hozircha ${n} ta mashg‘ulot yozilgan — AI boshlang‘ich reja tuzadi. Mashg‘ulotlarni yozib borsangiz, tavsiya aniqroq bo‘ladi.</p>` : ''}
       ${last && last.result ? `<button class="btn ghost small" data-act="aiLast">Oxirgi tavsiya · ${dateShort(isoDate(new Date(last.at)))}</button>` : ''}</section>`;
   }
 
@@ -849,7 +848,7 @@
   function aiSheet() {
     const st = ui.ai || {};
     let h = sheetHead('🤖 AI tavsiyasi', 'Keyingi hafta');
-    if (st.loading) return h + '<section class="card"><div class="empty">AI mashg‘ulotlaringizni tahlil qilmoqda… (10–20 soniya)</div></section>';
+    if (st.loading) return h + '<section class="card"><div class="empty">AI mashg‘ulotlaringizni tahlil qilmoqda… (10–30 soniya)</div></section>';
     if (st.error) return h + `<section class="card"><p>⚠️ ${esc(st.error)}</p><button class="btn primary block" data-act="aiPlan">Qayta urinish</button></section>`;
     const r = st.result;
     if (!r) return h;
